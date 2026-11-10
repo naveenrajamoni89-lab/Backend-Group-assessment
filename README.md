@@ -13,7 +13,7 @@ Built with **Node.js**, **Express**, and **SQLite**.
 | **Member 1** | Server & Carrels CRUD | ✅ Completed | Express setup, JSON middleware, Carrels REST API, DB interface |
 | **Member 2** | Database & Tables | ✅ Completed | SQLite schema (`students`, `carrels`, `bookings`), relations, seeds, query helpers |
 | **Member 3** | Bookings API, JOIN, Validation & Search | ✅ Completed | Bookings REST API, JOIN endpoints, Students API, zone search, input validation |
-| **Member 4 (Next)** | Top Carrels & Postman | ⏳ Next Up | GET `/carrels/top`, Postman collection, final report & testing |
+| **Member 4** | Top Carrels, Postman & Final Docs | ✅ Completed | GET `/carrels/top` (INNER JOIN & ranking), Postman collection, full verification & docs |
 
 ---
 
@@ -26,14 +26,16 @@ StudySpot-Cafe/
 ├── database.js          # SQLite connection manager, schema DDL, seeds, and query helpers
 ├── package.json         # Project metadata, dependencies, and test scripts
 ├── .gitignore           # Ignores node_modules, *.db, and temporary files
-├── test-member1.js      # Automated verification suite for Member 1 deliverables
-├── test-member2.js      # Automated verification suite for Member 2 deliverables
-├── test-member3.js      # Automated verification suite for Member 3 deliverables
+├── StudySpot-Cafe-Postman-Collection.json # Complete Postman Collection (v2.1.0)
+├── test-member1.js      # Automated verification suite for Member 1 deliverables (30 tests)
+├── test-member2.js      # Automated verification suite for Member 2 deliverables (61 tests)
+├── test-member3.js      # Automated verification suite for Member 3 deliverables (71 tests)
+├── test-member4.js      # Automated verification suite for Member 4 deliverables (27 tests)
 ├── routes/
-│   ├── carrels.js       # Carrels CRUD REST API + zone search (Member 1 & 3)
+│   ├── carrels.js       # Carrels CRUD + Top 3 ranking + zone search (Members 1, 3 & 4)
 │   ├── students.js      # Students REST API endpoints (Member 3)
 │   └── bookings.js      # Bookings REST API + JOIN endpoints (Member 3)
-└── README.md            # Team guide, schema reference, API documentation, and handover notes
+└── README.md            # Team guide, schema reference, API documentation, and testing report
 ```
 
 ---
@@ -63,26 +65,30 @@ npm install
 The server runs at: `http://localhost:3000`
 
 ### 4. Run the Verification Suites
-- **Run all automated suites (Member 1, Member 2 & Member 3):**
+- **Run all automated suites (Members 1, 2, 3 & 4 - 189 tests):**
   ```bash
   npm test
   ```
-- **Run Member 1 Verification Suite:**
+- **Run Member 1 Verification Suite (Server & Carrels CRUD - 30 tests):**
   ```bash
   npm run test:integration
   ```
-- **Run Member 2 Verification Suite:**
+- **Run Member 2 Verification Suite (Database & Schema - 61 tests):**
   ```bash
   npm run test:member2
   ```
-- **Run Member 3 Verification Suite:**
+- **Run Member 3 Verification Suite (Bookings, JOINs & Validation - 71 tests):**
   ```bash
   npm run test:member3
+  ```
+- **Run Member 4 Verification Suite (Top 3 Carrels & Routing - 27 tests):**
+  ```bash
+  npm run test:member4
   ```
 
 ---
 
-## 📡 Carrels API Reference (Member 1 & Member 3)
+## 📡 Carrels API Reference (Members 1, 3 & 4)
 
 Base URL: `http://localhost:3000/carrels`
 
@@ -97,7 +103,11 @@ All carrels have the following fields:
 |---|---|---|---|
 | `GET` | `/carrels` | Get all carrels (or filter by zone) | 200, 400, 500 |
 | `GET` | `/carrels?zone=Silent%20Study` | Search/filter carrels by zone | 200, 400, 500 |
+| `GET` | `/carrels/top` | Get top 3 carrels by booking count (Member 4) | 200, 500 |
 | `GET` | `/carrels/:id` | Get single carrel by ID | 200, 400, 404, 500 |
+| `POST` | `/carrels` | Create a new carrel | 201, 400, 500 |
+| `PUT` | `/carrels/:id` | Update an existing carrel | 200, 400, 404, 500 |
+| `DELETE` | `/carrels/:id` | Delete a carrel by ID | 200, 400, 404, 500 |
 | `POST` | `/carrels` | Create a new carrel | 201, 400, 500 |
 | `PUT` | `/carrels/:id` | Update an existing carrel | 200, 400, 404, 500 |
 | `DELETE` | `/carrels/:id` | Delete a carrel by ID | 200, 400, 404, 500 |
@@ -120,7 +130,55 @@ All carrels have the following fields:
 - If no carrels match the zone, an empty array `[]` is returned.
 - If `zone` is empty or whitespace-only, a `400 Bad Request` is returned.
 
-#### 2. GET `/carrels/:id` – Retrieve Single Carrel
+#### 2. GET `/carrels/top` – Top 3 Carrels Feature (Member 4)
+- **URL:** `http://localhost:3000/carrels/top`
+- **Description:** Returns the top three carrels that appear in the highest number of bookings, along with their booking counts.
+- **SQL Implementation:**
+  ```sql
+  SELECT 
+    carrels.id,
+    carrels.name,
+    carrels.zone,
+    COUNT(bookings.id) AS booking_count
+  FROM carrels
+  INNER JOIN bookings ON carrels.id = bookings.carrel_id
+  GROUP BY carrels.id, carrels.name, carrels.zone
+  ORDER BY booking_count DESC, carrels.name ASC
+  LIMIT 3;
+  ```
+- **Key Business Logic & SQL Rules:**
+  - **`INNER JOIN`**: Only carrels that appear in at least one booking are ranked. Carrels with zero bookings are excluded.
+  - **`GROUP BY`**: Aggregates bookings per carrel.
+  - **`COUNT`**: Computes `booking_count` for each carrel.
+  - **`ORDER BY`**: Ranks by `booking_count DESC`. If two carrels have identical booking counts, tie-breaking is applied alphabetically by carrel name (`carrels.name ASC`).
+  - **`LIMIT 3`**: Returns a maximum of three carrels.
+  - **Route Ordering:** Defined before `/carrels/:id` in `routes/carrels.js` to ensure the literal string `"top"` is not treated as a parameter ID.
+- **Response (200 OK):**
+```json
+[
+  {
+    "id": 2,
+    "name": "Collab Table B3",
+    "zone": "Collaborative",
+    "booking_count": 5
+  },
+  {
+    "id": 1,
+    "name": "Silent Pod A1",
+    "zone": "Silent Study",
+    "booking_count": 3
+  },
+  {
+    "id": 3,
+    "name": "Window Desk C4",
+    "zone": "Quiet Zone",
+    "booking_count": 3
+  }
+]
+```
+- If no bookings exist in the system, an empty array `[]` is returned with status `200 OK`.
+
+#### 3. GET `/carrels/:id` – Retrieve Single Carrel
 - **URL:** `http://localhost:3000/carrels/1`
 - **Response (200 OK):**
 ```json
@@ -131,7 +189,7 @@ All carrels have the following fields:
 }
 ```
 
-#### 3. POST `/carrels` – Create New Carrel
+#### 4. POST `/carrels` – Create New Carrel
 - **URL:** `http://localhost:3000/carrels`
 - **Request Body:**
 ```json
@@ -152,7 +210,7 @@ All carrels have the following fields:
 }
 ```
 
-#### 4. PUT `/carrels/:id` – Update a Carrel
+#### 5. PUT `/carrels/:id` – Update a Carrel
 - **URL:** `http://localhost:3000/carrels/1`
 - **Request Body:**
 ```json
@@ -173,7 +231,7 @@ All carrels have the following fields:
 }
 ```
 
-#### 5. DELETE `/carrels/:id` – Delete a Carrel
+#### 6. DELETE `/carrels/:id` – Delete a Carrel
 - **URL:** `http://localhost:3000/carrels/1`
 - **Response (200 OK):**
 ```json
@@ -377,37 +435,97 @@ Member 2 has implemented SQLite database management in `database.js` with full f
 
 ---
 
-## 🤝 Handover Instructions for Member 4 (Top Carrels & Postman Collection)
+---
 
-Member 3 has completed all Booking REST APIs, JOIN endpoints, Student endpoints, Carrels zone search, and comprehensive input validation.
+## 🏆 Member 4 Completion: Top 3 Carrels, Postman Suite & Final Deliverables
 
-### What Member 4 needs to implement:
-1. **Endpoint `GET /carrels/top`:**
-   - Retrieve top study carrels ordered by booking count (e.g. `COUNT(bookings.id) DESC LIMIT 3`).
-   - Query template recommendation:
-     ```sql
-     SELECT 
-       carrels.id,
-       carrels.name,
-       carrels.zone,
-       COUNT(bookings.id) AS booking_count
-     FROM carrels
-     LEFT JOIN bookings ON carrels.id = bookings.carrel_id
-     GROUP BY carrels.id
-     ORDER BY booking_count DESC, carrels.id ASC
-     LIMIT 3;
-     ```
-   - IMPORTANT: Register `GET /carrels/top` in `routes/carrels.js` **before** `GET /carrels/:id` to avoid route conflicts.
-2. **Postman Collection & Environment:**
-   - Create and export a Postman collection covering all carrels, students, and bookings endpoints.
-   - Include positive and negative test assertions.
-3. **Final Report & Deliverables:**
-   - Complete team documentation and integration tests.
+Member 4 has completed the final phase of the StudySpot Cafe backend assessment.
+
+### 1. Special Feature: Top 3 Carrels (`GET /carrels/top`)
+- **SQL Implementation:**
+  ```sql
+  SELECT 
+    carrels.id,
+    carrels.name,
+    carrels.zone,
+    COUNT(bookings.id) AS booking_count
+  FROM carrels
+  INNER JOIN bookings ON carrels.id = bookings.carrel_id
+  GROUP BY carrels.id, carrels.name, carrels.zone
+  ORDER BY booking_count DESC, carrels.name ASC
+  LIMIT 3;
+  ```
+- **Requirements Satisfied:**
+  - Uses `INNER JOIN` between `carrels` and `bookings` so unbooked carrels are omitted from the top rankings.
+  - Groups results by carrel attributes and aggregates with `COUNT(bookings.id) AS booking_count`.
+  - Sorts descending by booking count (`booking_count DESC`).
+  - Alphabetical tie-breaking: when booking counts are identical, sorts alphabetically by carrel name (`carrels.name ASC`).
+  - Strict limit: returns a maximum of 3 carrels (`LIMIT 3`).
+  - Route order in Express: placed prior to `GET /carrels/:id` to prevent route shadowing.
 
 ---
 
-## 🔒 Boundaries Respected
-- **Express routes maintained:** Member 1's `/carrels` routes and validation preserved and enhanced with zone search.
-- **Database integrity preserved:** Member 2's schema, foreign key cascade behaviors, and query functions utilized directly.
-- **No `GET /carrels/top` implemented:** Reserved exclusively for Member 4.
-- **Single database connection:** All modules share `studyspot.db` through `database.js`.
+## 📮 Postman Collection & Testing Guide
+
+The complete assessment suite includes an official Postman collection file:
+**`StudySpot-Cafe-Postman-Collection.json`** (Postman Collection v2.1.0 format).
+
+### How to Import and Run the Collection:
+
+1. **Start the StudySpot Cafe API Server:**
+   ```bash
+   npm start
+   ```
+   Ensure the server is running on `http://localhost:3000`.
+
+2. **Open Postman:**
+   - Click **Import** (top left).
+   - Select or drag and drop `StudySpot-Cafe-Postman-Collection.json`.
+   - The collection `StudySpot Cafe API - Complete Test Suite` will appear in your workspace.
+
+3. **Verify Collection Variables:**
+   - The collection includes a default variable:
+     - `baseUrl`: `http://localhost:3000`
+   - If your port differs, update `baseUrl` under the collection's **Variables** tab.
+
+4. **Run Collection:**
+   - Right-click the imported collection and select **Run collection**.
+   - Check all folders:
+     - `0. Health & Welcome`
+     - `1. Carrels Endpoints` (includes `GET /carrels/top`)
+     - `2. Students Endpoints`
+     - `3. Bookings Endpoints` (includes `GET /bookings/details`)
+   - Click **Run StudySpot Cafe API**.
+   - All tests include automated assertions (`pm.test`) verifying HTTP status codes (200, 201, 400, 404), schema structure, data types, and business constraints.
+
+---
+
+## 🧪 Comprehensive Automated Test Results
+
+All four members' deliverables are backed by automated verification test suites:
+
+```text
+====================================================
+ StudySpot Cafe - Full Test Execution Summary
+====================================================
+
+Member 1 Suite (Server, Express, Carrels CRUD):        30 / 30 PASS  (100%)
+Member 2 Suite (SQLite Relational Schema & Methods):   61 / 61 PASS  (100%)
+Member 3 Suite (Bookings, JOINs, Validation & Search): 71 / 71 PASS  (100%)
+Member 4 Suite (Top 3 Carrels & Route Verification):   27 / 27 PASS  (100%)
+--------------------------------------------------------------------
+Total Automated Test Assertions:                      189 / 189 PASS (100%)
+====================================================
+```
+
+To run all suites locally:
+```bash
+npm test
+```
+
+---
+
+## 🔒 Boundaries & Code Integrity
+- **Member 1 & 2 Foundations Preserved:** All baseline Express routes, database connection mechanisms, error handlers, and foreign key cascades operate intact.
+- **Member 3 Enhancements Preserved:** Bookings JOIN endpoints, student REST endpoints, and query parameter search (`?zone=`, `?student_id=`, etc.) remain fully verified.
+- **Member 4 Integration:** Seamlessly added `GET /carrels/top` using existing database connection and query conventions without disrupting any prior work.

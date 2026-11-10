@@ -365,6 +365,31 @@ const getCarrelsByZone = async (zone) => {
   return db.all('SELECT * FROM carrels WHERE zone = ? ORDER BY id ASC', [zone.trim()]);
 };
 
+/**
+ * Retrieves the top carrels ranked by booking count.
+ * Uses INNER JOIN, GROUP BY, COUNT, ORDER BY, and LIMIT.
+ * Ties are broken alphabetically by carrel name.
+ */
+const getTopCarrels = async (limit = 3) => {
+  const db = await getDatabase();
+  const parsedLimit = Number(limit);
+  const finalLimit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? parsedLimit : 3;
+
+  const sql = `
+    SELECT 
+      carrels.id,
+      carrels.name,
+      carrels.zone,
+      COUNT(bookings.id) AS booking_count
+    FROM carrels
+    INNER JOIN bookings ON carrels.id = bookings.carrel_id
+    GROUP BY carrels.id, carrels.name, carrels.zone
+    ORDER BY booking_count DESC, carrels.name ASC
+    LIMIT ?
+  `;
+  return db.all(sql, [finalLimit]);
+};
+
 const deleteCarrel = async (id) => {
   const parsedId = Number(id);
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
@@ -504,6 +529,7 @@ module.exports = {
   updateCarrel,
   deleteCarrel,
   getCarrelsByZone,
+  getTopCarrels,
 
   // Booking operations
   getAllBookings,

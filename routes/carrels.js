@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDatabase } = require('../database');
+const { getDatabase, getTopCarrels } = require('../database');
 
 /**
  * Helper to validate positive integer IDs.
@@ -50,7 +50,24 @@ router.get('/', async (req, res) => {
 });
 
 // ============================================================================
-// 2. GET /carrels/:id - Get one carrel by ID
+// 2. GET /carrels/top - Get top 3 carrels ranked by booking count (Member 4)
+// (Registered BEFORE /:id to prevent route shadowing)
+// ============================================================================
+router.get('/top', async (req, res) => {
+  try {
+    const topCarrels = await getTopCarrels(3);
+    return res.status(200).json(topCarrels);
+  } catch (error) {
+    console.error('Error fetching top carrels:', error.message);
+    return res.status(500).json({
+      error: 'Internal server error while fetching top carrels',
+      details: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// 3. GET /carrels/:id - Get one carrel by ID
 // ============================================================================
 router.get('/:id', async (req, res) => {
   try {
@@ -81,7 +98,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 3. POST /carrels - Add a new carrel
+// 4. POST /carrels - Add a new carrel
 // ============================================================================
 router.post('/', async (req, res) => {
   try {
@@ -161,7 +178,7 @@ router.post('/', async (req, res) => {
 });
 
 // ============================================================================
-// 4. PUT /carrels/:id - Update an existing carrel
+// 5. PUT /carrels/:id - Update an existing carrel
 // ============================================================================
 router.put('/:id', async (req, res) => {
   try {
@@ -230,7 +247,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 5. DELETE /carrels/:id - Delete a carrel by ID
+// 6. DELETE /carrels/:id - Delete a carrel by ID
 // ============================================================================
 router.delete('/:id', async (req, res) => {
   try {

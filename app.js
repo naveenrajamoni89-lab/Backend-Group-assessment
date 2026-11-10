@@ -29,6 +29,7 @@ app.get('/', (req, res) => {
     endpoints: {
       carrels: {
         getAll: 'GET /carrels',
+        getTop: 'GET /carrels/top',
         getOne: 'GET /carrels/:id',
         create: 'POST /carrels',
         update: 'PUT /carrels/:id',
