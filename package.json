@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test:integration": "node test-member1.js"
+    "test": "node test-member1.js && node test-member2.js",
+    "test:integration": "node test-member1.js",
+    "test:member2": "node test-member2.js"
   },
   "keywords": [
     "express",

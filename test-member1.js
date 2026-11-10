@@ -9,7 +9,7 @@
 
 const http = require('http');
 const { app } = require('./app');
-const { getDatabase } = require('./database');
+const { getDatabase, initializeDatabase } = require('./database');
 
 const runTests = async () => {
   console.log('====================================================');
@@ -115,15 +115,13 @@ const runTests = async () => {
 
     // --- Test Group C: Database Contract Verification ---
     console.log('\n--- Group C: Database CRUD Execution Verification ---');
-    console.log('  Setting up temporary carrels table to verify all CRUD endpoints...');
+    console.log('  Preparing test table state to verify all CRUD endpoints...');
     const db = await getDatabase();
+    await initializeDatabase();
     await db.exec(`
-      CREATE TABLE IF NOT EXISTS carrels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        zone TEXT NOT NULL
-      );
+      DELETE FROM bookings;
       DELETE FROM carrels;
+      DELETE FROM sqlite_sequence WHERE name IN ('carrels', 'bookings');
     `);
 
     // 1. POST /carrels (Create) -> 201 Created
@@ -195,9 +193,9 @@ const runTests = async () => {
     const deleteNotFoundRes = await request('/carrels/999', { method: 'DELETE' });
     assert(deleteNotFoundRes.status === 404, 'DELETE /carrels/999 returns 404 Not Found');
 
-    // Clean up test table so database schema remains Member 2's clean responsibility
-    await db.exec('DROP TABLE IF EXISTS carrels;');
-    console.log('  Cleaned up temporary table to preserve Member 2 scope.');
+    // Restore database schema and seed data for team integration
+    await initializeDatabase();
+    console.log('  Restored database tables and seed data for team integration.');
 
   } finally {
     server.close();
