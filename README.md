@@ -12,8 +12,8 @@ Built with **Node.js**, **Express**, and **SQLite**.
 |---|---|---|---|
 | **Member 1** | Server & Carrels CRUD | ✅ Completed | Express setup, JSON middleware, Carrels REST API, DB interface |
 | **Member 2** | Database & Tables | ✅ Completed | SQLite schema (`students`, `carrels`, `bookings`), relations, seeds, query helpers |
-| **Member 3 (Current)** | Bookings API & Search | ⏳ Next Up | Booking endpoints, validation, JOIN queries, search filters |
-| **Member 4** | Top Carrels & Postman | 📅 Upcoming | GET `/carrels/top`, Postman collection, final report & testing |
+| **Member 3** | Bookings API, JOIN, Validation & Search | ✅ Completed | Bookings REST API, JOIN endpoints, Students API, zone search, input validation |
+| **Member 4 (Next)** | Top Carrels & Postman | ⏳ Next Up | GET `/carrels/top`, Postman collection, final report & testing |
 
 ---
 
@@ -28,8 +28,11 @@ StudySpot-Cafe/
 ├── .gitignore           # Ignores node_modules, *.db, and temporary files
 ├── test-member1.js      # Automated verification suite for Member 1 deliverables
 ├── test-member2.js      # Automated verification suite for Member 2 deliverables
+├── test-member3.js      # Automated verification suite for Member 3 deliverables
 ├── routes/
-│   └── carrels.js       # Carrels CRUD REST API endpoints (Member 1)
+│   ├── carrels.js       # Carrels CRUD REST API + zone search (Member 1 & 3)
+│   ├── students.js      # Students REST API endpoints (Member 3)
+│   └── bookings.js      # Bookings REST API + JOIN endpoints (Member 3)
 └── README.md            # Team guide, schema reference, API documentation, and handover notes
 ```
 
@@ -60,7 +63,7 @@ npm install
 The server runs at: `http://localhost:3000`
 
 ### 4. Run the Verification Suites
-- **Run all automated suites (Member 1 & Member 2):**
+- **Run all automated suites (Member 1, Member 2 & Member 3):**
   ```bash
   npm test
   ```
@@ -72,10 +75,14 @@ The server runs at: `http://localhost:3000`
   ```bash
   npm run test:member2
   ```
+- **Run Member 3 Verification Suite:**
+  ```bash
+  npm run test:member3
+  ```
 
 ---
 
-## 📡 Carrels API Reference (Member 1)
+## 📡 Carrels API Reference (Member 1 & Member 3)
 
 Base URL: `http://localhost:3000/carrels`
 
@@ -84,32 +91,22 @@ All carrels have the following fields:
 - `name` (String, Required)
 - `zone` (String, Required)
 
-### HTTP Status Code Conventions
-- `200 OK` – Successful GET, PUT, or DELETE request.
-- `201 Created` – Successfully added a new carrel via POST.
-- `400 Bad Request` – Missing required fields, empty values, or invalid ID format.
-- `404 Not Found` – Requested carrel ID does not exist.
-- `500 Internal Server Error` – Unhandled server or database error.
-
----
-
 ### Endpoints Overview
 
 | Method | Endpoint | Description | Status Codes |
 |---|---|---|---|
-| `GET` | `/carrels` | Get all carrels | 200, 500 |
+| `GET` | `/carrels` | Get all carrels (or filter by zone) | 200, 400, 500 |
+| `GET` | `/carrels?zone=Silent%20Study` | Search/filter carrels by zone | 200, 400, 500 |
 | `GET` | `/carrels/:id` | Get single carrel by ID | 200, 400, 404, 500 |
 | `POST` | `/carrels` | Create a new carrel | 201, 400, 500 |
 | `PUT` | `/carrels/:id` | Update an existing carrel | 200, 400, 404, 500 |
 | `DELETE` | `/carrels/:id` | Delete a carrel by ID | 200, 400, 404, 500 |
 
----
-
 ### Detailed Request & Response Examples
 
-#### 1. GET `/carrels` – Retrieve All Carrels
-- **Method:** `GET`
-- **URL:** `http://localhost:3000/carrels`
+#### 1. GET `/carrels` & `/carrels?zone=Silent%20Study`
+- **URL without filter:** `http://localhost:3000/carrels`
+- **URL with zone filter:** `http://localhost:3000/carrels?zone=Silent%20Study`
 - **Response (200 OK):**
 ```json
 [
@@ -117,17 +114,13 @@ All carrels have the following fields:
     "id": 1,
     "name": "Silent Pod A1",
     "zone": "Silent Study"
-  },
-  {
-    "id": 2,
-    "name": "Collab Table B3",
-    "zone": "Collaborative"
   }
 ]
 ```
+- If no carrels match the zone, an empty array `[]` is returned.
+- If `zone` is empty or whitespace-only, a `400 Bad Request` is returned.
 
 #### 2. GET `/carrels/:id` – Retrieve Single Carrel
-- **Method:** `GET`
 - **URL:** `http://localhost:3000/carrels/1`
 - **Response (200 OK):**
 ```json
@@ -137,23 +130,9 @@ All carrels have the following fields:
   "zone": "Silent Study"
 }
 ```
-- **Error Response (400 Bad Request):**
-```json
-{
-  "error": "Invalid carrel ID. ID must be a positive integer."
-}
-```
-- **Error Response (404 Not Found):**
-```json
-{
-  "error": "Carrel with ID 999 not found"
-}
-```
 
 #### 3. POST `/carrels` – Create New Carrel
-- **Method:** `POST`
 - **URL:** `http://localhost:3000/carrels`
-- **Headers:** `Content-Type: application/json`
 - **Request Body:**
 ```json
 {
@@ -172,17 +151,9 @@ All carrels have the following fields:
   }
 }
 ```
-- **Error Response (400 Bad Request - Missing Field):**
-```json
-{
-  "error": "Invalid request body. \"zone\" is required and must be a non-empty string."
-}
-```
 
 #### 4. PUT `/carrels/:id` – Update a Carrel
-- **Method:** `PUT`
 - **URL:** `http://localhost:3000/carrels/1`
-- **Headers:** `Content-Type: application/json`
 - **Request Body:**
 ```json
 {
@@ -201,15 +172,8 @@ All carrels have the following fields:
   }
 }
 ```
-- **Error Response (404 Not Found):**
-```json
-{
-  "error": "Carrel with ID 999 not found"
-}
-```
 
 #### 5. DELETE `/carrels/:id` – Delete a Carrel
-- **Method:** `DELETE`
 - **URL:** `http://localhost:3000/carrels/1`
 - **Response (200 OK):**
 ```json
@@ -217,14 +181,171 @@ All carrels have the following fields:
   "message": "Carrel with ID 1 deleted successfully"
 }
 ```
-- **Error Response (404 Not Found):**
+
+---
+
+## 📡 Students API Reference (Member 3)
+
+Base URL: `http://localhost:3000/students`
+
+Students have the following fields:
+- `id` (Integer, Primary Key)
+- `name` (String, Required)
+- `email` (String, Optional / Unique)
+
+### Endpoints Overview
+
+| Method | Endpoint | Description | Status Codes |
+|---|---|---|---|
+| `GET` | `/students` | Get all students | 200, 500 |
+| `GET` | `/students/:id` | Get single student by ID | 200, 400, 404, 500 |
+| `POST` | `/students` | Register a new student | 201, 400, 500 |
+
+#### 1. GET `/students`
+- **Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "name": "Alice Johnson",
+    "email": "alice@example.com"
+  }
+]
+```
+
+#### 2. POST `/students`
+- **Request Body:**
 ```json
 {
-  "error": "Carrel with ID 999 not found"
+  "name": "Rahul Sharma",
+  "email": "rahul@example.com"
+}
+```
+- **Response (201 Created):**
+```json
+{
+  "message": "Student created successfully",
+  "student": {
+    "id": 5,
+    "name": "Rahul Sharma",
+    "email": "rahul@example.com"
+  }
 }
 ```
 
 ---
+
+## 📡 Bookings API Reference (Member 3)
+
+Base URL: `http://localhost:3000/bookings`
+
+Bookings have the following fields:
+- `id` (Integer, Primary Key)
+- `student_id` (Integer, Required, FK -> students.id)
+- `carrel_id` (Integer, Required, FK -> carrels.id)
+- `booking_date` (String, Required, YYYY-MM-DD)
+- `booking_time` (String, Optional, e.g. "09:00 - 11:00")
+
+### Endpoints Overview
+
+| Method | Endpoint | Description | Status Codes |
+|---|---|---|---|
+| `GET` | `/bookings` | Get all bookings (supports `?student_id=`, `?carrel_id=`, `?booking_date=`) | 200, 400, 500 |
+| `GET` | `/bookings/details` | Get all bookings joined with student and carrel details | 200, 400, 500 |
+| `GET` | `/bookings/details/:id` | Get single booking joined with student and carrel details | 200, 400, 404, 500 |
+| `GET` | `/bookings/:id` | Get single booking by ID | 200, 400, 404, 500 |
+| `POST` | `/bookings` | Create a new booking | 201, 400, 500 |
+| `DELETE` | `/bookings/:id` | Delete a booking by ID | 200, 400, 404, 500 |
+
+### Detailed Request & Response Examples
+
+#### 1. GET `/bookings/details` – Booking JOIN Endpoint
+- **URL:** `http://localhost:3000/bookings/details`
+- **Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "booking_date": "2026-11-10",
+    "booking_time": "09:00 - 11:00",
+    "student_id": 1,
+    "student_name": "Alice Johnson",
+    "student_email": "alice@example.com",
+    "carrel_id": 2,
+    "carrel_name": "Collab Table B3",
+    "carrel_zone": "Collaborative"
+  }
+]
+```
+
+#### 2. GET `/bookings/details/:id` – Single Booking JOIN Endpoint
+- **URL:** `http://localhost:3000/bookings/details/1`
+- **Response (200 OK):**
+```json
+{
+  "id": 1,
+  "booking_date": "2026-11-10",
+  "booking_time": "09:00 - 11:00",
+  "student_id": 1,
+  "student_name": "Alice Johnson",
+  "student_email": "alice@example.com",
+  "carrel_id": 2,
+  "carrel_name": "Collab Table B3",
+  "carrel_zone": "Collaborative"
+}
+```
+
+#### 3. POST `/bookings` – Create New Booking
+- **URL:** `http://localhost:3000/bookings`
+- **Request Body:**
+```json
+{
+  "student_id": 1,
+  "carrel_id": 2,
+  "booking_date": "2026-11-10",
+  "booking_time": "09:00 - 11:00"
+}
+```
+- **Response (201 Created):**
+```json
+{
+  "message": "Booking created successfully",
+  "booking": {
+    "id": 4,
+    "student_id": 1,
+    "carrel_id": 2,
+    "booking_date": "2026-11-10",
+    "booking_time": "09:00 - 11:00"
+  }
+}
+```
+- **Error Response (400 Bad Request - Non-existent Student):**
+```json
+{
+  "error": "Student with ID 9999 does not exist."
+}
+```
+- **Error Response (400 Bad Request - Non-existent Carrel):**
+```json
+{
+  "error": "Carrel with ID 9999 does not exist."
+}
+```
+
+#### 4. DELETE `/bookings/:id` – Delete Booking
+- **URL:** `http://localhost:3000/bookings/1`
+- **Response (200 OK):**
+```json
+{
+  "message": "Booking with ID 1 deleted successfully"
+}
+```
+- **Error Response (404 Not Found):**
+```json
+{
+  "error": "Booking with ID 9999 not found"
+}
+```
 
 ---
 
@@ -242,7 +363,7 @@ Member 2 has implemented SQLite database management in `database.js` with full f
 
 ### 2. Relational Schema Design
 
-```
+```text
 +------------------+       1 : N       +-------------------------+       N : 1       +------------------+
 |     students     | <---------------- |        bookings         | ----------------> |     carrels      |
 +------------------+                   +-------------------------+                   +------------------+
@@ -254,120 +375,39 @@ Member 2 has implemented SQLite database management in `database.js` with full f
                                        +-------------------------+
 ```
 
-#### Table Definitions (DDL)
-
-```sql
--- 1. Students Table
-CREATE TABLE IF NOT EXISTS students (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE
-);
-
--- 2. Carrels Table (matches Carrels API contract)
-CREATE TABLE IF NOT EXISTS carrels (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  zone TEXT NOT NULL
-);
-
--- 3. Bookings Table (with foreign key constraints and cascade actions)
-CREATE TABLE IF NOT EXISTS bookings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  student_id INTEGER NOT NULL,
-  carrel_id INTEGER NOT NULL,
-  booking_date TEXT NOT NULL,
-  booking_time TEXT,
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (carrel_id) REFERENCES carrels(id) ON DELETE CASCADE
-);
-```
-
-#### Key Relationships & Integrity Rules:
-1. **One student can have multiple bookings** (`student_id` in `bookings` references `students(id)`).
-2. **One carrel can appear in multiple bookings** (`carrel_id` in `bookings` references `carrels(id)`).
-3. **Every booking must reference an existing student and carrel:** Enforced via `NOT NULL` on foreign key columns and active SQLite foreign key pragma. Rejects invalid references with `FOREIGN KEY constraint failed`.
-4. **Cascade Deletions (`ON DELETE CASCADE`):** If a student or carrel is deleted, their associated bookings are automatically removed, preventing orphan rows.
-5. **Idempotent Seeding:** `initializeDatabase()` checks existing row counts before inserting seed records, avoiding duplicates across restarts.
-
 ---
 
-### 3. Reusable Database Query Operations (Available for Team)
+## 🤝 Handover Instructions for Member 4 (Top Carrels & Postman Collection)
 
-Member 2 has exported modular, promise-based query functions from `database.js` ready for Member 3 and Member 4:
+Member 3 has completed all Booking REST APIs, JOIN endpoints, Student endpoints, Carrels zone search, and comprehensive input validation.
 
-#### Students Operations:
-- `getAllStudents()` – Returns array of all student records.
-- `getStudentById(id)` – Returns single student record or undefined.
-- `insertStudent({ name, email })` – Inserts and returns `{ id, name, email }`.
-
-#### Carrels Operations:
-- `getAllCarrels()` – Returns array of all carrels.
-- `getCarrelById(id)` – Returns single carrel record or undefined.
-- `insertCarrel({ id, name, zone })` – Inserts carrel (supports optional explicit ID) and returns `{ id, name, zone }`.
-- `updateCarrel(id, { name, zone })` – Updates carrel and returns updated object or null.
-- `deleteCarrel(id)` – Deletes carrel and returns boolean.
-
-#### Bookings Operations:
-- `getAllBookings()` – Returns array of all bookings.
-- `getBookingById(id)` – Returns single booking record or undefined.
-- `insertBooking({ student_id, carrel_id, booking_date, booking_time })` – Inserts and returns created booking object.
-- `deleteBooking(id)` – Deletes booking by ID.
-
-#### SQL JOIN Query & Helpers (Ready for Member 3):
-- `BOOKINGS_JOIN_QUERY` – Exported SQL query string joining `bookings`, `students`, and `carrels`:
-  ```sql
-  SELECT 
-    bookings.id,
-    bookings.booking_date,
-    bookings.booking_time,
-    bookings.student_id,
-    students.name AS student_name,
-    students.email AS student_email,
-    bookings.carrel_id,
-    carrels.name AS carrel_name,
-    carrels.zone AS carrel_zone
-  FROM bookings
-  JOIN students ON bookings.student_id = students.id
-  JOIN carrels ON bookings.carrel_id = carrels.id
-  ```
-- `getAllBookingsWithDetails()` – Executes the JOIN query and returns all detailed booking records.
-- `getBookingWithDetailsById(id)` – Executes the JOIN query for a specific booking ID.
-- `getBookingsByStudentId(studentId)` – Filters joined bookings by student.
-- `getBookingsByCarrelId(carrelId)` – Filters joined bookings by carrel.
-
----
-
-## 🤝 Handover Instructions for Member 3 (Bookings APIs & Validation)
-
-Member 2 has completed the database schema, table relations, constraints, seed records, and prepared JOIN queries.
-
-### How Member 3 should use `database.js`:
-```javascript
-const {
-  getDatabase,
-  getAllBookings,
-  getBookingById,
-  insertBooking,
-  getAllBookingsWithDetails,
-  getBookingWithDetailsById,
-  BOOKINGS_JOIN_QUERY,
-} = require('../database');
-```
-
-### What Member 3 needs to implement:
-1. Create `routes/bookings.js` and mount it at `/bookings` in `app.js`.
-2. Implement Booking REST API endpoints:
-   - `GET /bookings` – Retrieve all bookings (or detailed bookings).
-   - `GET /bookings/:id` – Retrieve a single booking.
-   - `POST /bookings` – Create a new booking (validate student exists, carrel exists, date format).
-   - `GET /bookings/details` or JOIN endpoint – Utilize `getAllBookingsWithDetails()` or `BOOKINGS_JOIN_QUERY`.
-   - Search/filter functionality (e.g. by student, carrel, date).
+### What Member 4 needs to implement:
+1. **Endpoint `GET /carrels/top`:**
+   - Retrieve top study carrels ordered by booking count (e.g. `COUNT(bookings.id) DESC LIMIT 3`).
+   - Query template recommendation:
+     ```sql
+     SELECT 
+       carrels.id,
+       carrels.name,
+       carrels.zone,
+       COUNT(bookings.id) AS booking_count
+     FROM carrels
+     LEFT JOIN bookings ON carrels.id = bookings.carrel_id
+     GROUP BY carrels.id
+     ORDER BY booking_count DESC, carrels.id ASC
+     LIMIT 3;
+     ```
+   - IMPORTANT: Register `GET /carrels/top` in `routes/carrels.js` **before** `GET /carrels/:id` to avoid route conflicts.
+2. **Postman Collection & Environment:**
+   - Create and export a Postman collection covering all carrels, students, and bookings endpoints.
+   - Include positive and negative test assertions.
+3. **Final Report & Deliverables:**
+   - Complete team documentation and integration tests.
 
 ---
 
 ## 🔒 Boundaries Respected
-- **Express routes maintained:** Member 1's `/carrels` routes and validation were not overwritten.
-- **No Booking JOIN Express endpoint created:** Reserved for Member 3.
-- **No Top 3 carrels endpoint created:** Reserved for Member 4.
+- **Express routes maintained:** Member 1's `/carrels` routes and validation preserved and enhanced with zone search.
+- **Database integrity preserved:** Member 2's schema, foreign key cascade behaviors, and query functions utilized directly.
+- **No `GET /carrels/top` implemented:** Reserved exclusively for Member 4.
 - **Single database connection:** All modules share `studyspot.db` through `database.js`.

@@ -357,6 +357,14 @@ const updateCarrel = async (id, updateData) => {
   };
 };
 
+const getCarrelsByZone = async (zone) => {
+  if (typeof zone !== 'string' || !zone.trim()) {
+    throw new Error('Carrel zone is required and must be a non-empty string.');
+  }
+  const db = await getDatabase();
+  return db.all('SELECT * FROM carrels WHERE zone = ? ORDER BY id ASC', [zone.trim()]);
+};
+
 const deleteCarrel = async (id) => {
   const parsedId = Number(id);
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
@@ -495,6 +503,7 @@ module.exports = {
   createCarrel: insertCarrel,
   updateCarrel,
   deleteCarrel,
+  getCarrelsByZone,
 
   // Booking operations
   getAllBookings,

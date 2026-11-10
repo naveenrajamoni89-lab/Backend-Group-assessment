@@ -1,5 +1,7 @@
 const express = require('express');
 const carrelsRouter = require('./routes/carrels');
+const studentsRouter = require('./routes/students');
+const bookingsRouter = require('./routes/bookings');
 const { initializeDatabase } = require('./database');
 
 const app = express();
@@ -32,6 +34,19 @@ app.get('/', (req, res) => {
         update: 'PUT /carrels/:id',
         delete: 'DELETE /carrels/:id',
       },
+      students: {
+        getAll: 'GET /students',
+        getOne: 'GET /students/:id',
+        create: 'POST /students',
+      },
+      bookings: {
+        getAll: 'GET /bookings',
+        getDetails: 'GET /bookings/details',
+        getDetailsById: 'GET /bookings/details/:id',
+        getOne: 'GET /bookings/:id',
+        create: 'POST /bookings',
+        delete: 'DELETE /bookings/:id',
+      },
     },
   });
 });
@@ -40,6 +55,8 @@ app.get('/', (req, res) => {
 // Route Mounting
 // ============================================================================
 app.use('/carrels', carrelsRouter);
+app.use('/students', studentsRouter);
+app.use('/bookings', bookingsRouter);
 
 // ============================================================================
 // 404 Not Found Handler for Unmatched Routes

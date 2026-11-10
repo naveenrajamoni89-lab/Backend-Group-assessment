@@ -15,11 +15,29 @@ const parsePositiveIntegerId = (idParam) => {
 };
 
 // ============================================================================
-// 1. GET /carrels - Get all carrels
+// 1. GET /carrels - Get all carrels (with optional ?zone= query parameter search)
 // ============================================================================
 router.get('/', async (req, res) => {
   try {
+    const { zone } = req.query;
     const db = await getDatabase();
+
+    // Zone search filter: GET /carrels?zone=Silent%20Study
+    if (zone !== undefined) {
+      if (typeof zone !== 'string' || !zone.trim()) {
+        return res.status(400).json({
+          error: 'Invalid zone query parameter. It must be a non-empty string.',
+        });
+      }
+
+      const trimmedZone = zone.trim();
+      const carrels = await db.all(
+        'SELECT * FROM carrels WHERE zone = ? ORDER BY id ASC',
+        [trimmedZone]
+      );
+      return res.status(200).json(carrels);
+    }
+
     const carrels = await db.all('SELECT * FROM carrels ORDER BY id ASC');
     return res.status(200).json(carrels);
   } catch (error) {
@@ -67,6 +85,12 @@ router.get('/:id', async (req, res) => {
 // ============================================================================
 router.post('/', async (req, res) => {
   try {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({
+        error: 'Invalid request body. Request body must be a JSON object.',
+      });
+    }
+
     const { id, name, zone } = req.body;
 
     // Validate name
@@ -145,6 +169,12 @@ router.put('/:id', async (req, res) => {
     if (!carrelId) {
       return res.status(400).json({
         error: 'Invalid carrel ID. ID must be a positive integer.',
+      });
+    }
+
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({
+        error: 'Invalid request body. Request body must be a JSON object.',
       });
     }
 

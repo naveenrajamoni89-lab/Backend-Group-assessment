@@ -6,9 +6,10 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "node test-member1.js && node test-member2.js",
+    "test": "node test-member1.js && node test-member2.js && node test-member3.js",
     "test:integration": "node test-member1.js",
-    "test:member2": "node test-member2.js"
+    "test:member2": "node test-member2.js",
+    "test:member3": "node test-member3.js"
   },
   "keywords": [
     "express",
